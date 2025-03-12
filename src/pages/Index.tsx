@@ -7,12 +7,15 @@ import { Footer } from "@/components/home/Footer";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-      <HeroSection />
-      <FeatureSection />
-      <TestimonialsSection />
-      <CallToAction />
-      <Footer />
+    <div className="min-h-screen bg-background cyber-grid">
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-background/50 to-background pointer-events-none" />
+        <HeroSection />
+        <FeatureSection />
+        <TestimonialsSection />
+        <CallToAction />
+        <Footer />
+      </div>
     </div>
   );
 };

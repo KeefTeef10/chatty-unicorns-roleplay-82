@@ -29,28 +29,32 @@ export const HeroSection = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-24 text-center">
-      <h1 className="text-4xl md:text-6xl font-bold mb-6">Connect, Share, Grow</h1>
-      <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto">
-        Join our community platform where you can connect with like-minded people, share your interests, and build meaningful relationships.
-      </p>
-      
-      <div className="max-w-md mx-auto mb-16">
-        <div className="flex gap-2">
-          <Input 
-            type="email" 
-            placeholder="Enter your email to get started" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="h-12"
-          />
-          <Button 
-            onClick={handleGetStarted} 
-            size="lg"
-            className="px-8"
-          >
-            Join Now
-          </Button>
+    <div className="container mx-auto px-4 py-24 relative">
+      <div className="max-w-4xl mx-auto text-center space-y-8">
+        <h1 className="text-5xl md:text-7xl font-bold neon-glow bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-accent">
+          Connect in Cyberspace
+        </h1>
+        <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+          Join our next-gen platform where digital connections become reality
+        </p>
+        
+        <div className="max-w-md mx-auto neon-border rounded-lg p-1 bg-background/50 backdrop-blur">
+          <div className="flex gap-2">
+            <Input 
+              type="email" 
+              placeholder="Enter your email to get started" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-12 bg-background/50 border-primary/50"
+            />
+            <Button 
+              onClick={handleGetStarted} 
+              size="lg"
+              className="px-8 bg-primary hover:bg-primary/80 text-primary-foreground neon-glow"
+            >
+              Join Now
+            </Button>
+          </div>
         </div>
       </div>
     </div>
