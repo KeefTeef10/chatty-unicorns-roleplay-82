@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -61,7 +60,7 @@ const Index = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Features Section */}
       <div className="container mx-auto px-4 py-12 md:py-24">
         <h2 className="text-3xl font-bold text-center mb-12">Everything you need to connect</h2>
