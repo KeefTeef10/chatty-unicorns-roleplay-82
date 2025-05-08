@@ -8,23 +8,36 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
-import { Send, PlusCircle, Users } from "lucide-react";
+import { Send, PlusCircle, Users, Shield, Lock, LockOpen } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { 
+  generateKeyPair, 
+  generateSymmetricKey, 
+  encryptSymmetric, 
+  decryptSymmetric, 
+  storeKeys, 
+  getKeys,
+  storeRoomKey,
+  getRoomKey
+} from "@/utils/encryption";
 
 // Mock data - in a real app this would come from an API
 const MOCK_ROOMS = [
-  { id: 1, name: "General Chat", description: "Open discussion for everyone" },
-  { id: 2, name: "Music Lovers", description: "Share and discuss your favorite music" },
-  { id: 3, name: "Book Club", description: "For avid readers and book enthusiasts" },
-  { id: 4, name: "Tech Talk", description: "Discussions about technology and gadgets" },
-  { id: 5, name: "Movie Buffs", description: "For film enthusiasts and critics" }
+  { id: 1, name: "General Chat", description: "Open discussion for everyone", encrypted: false },
+  { id: 2, name: "Music Lovers", description: "Share and discuss your favorite music", encrypted: false },
+  { id: 3, name: "Book Club", description: "For avid readers and book enthusiasts", encrypted: true },
+  { id: 4, name: "Tech Talk", description: "Discussions about technology and gadgets", encrypted: false },
+  { id: 5, name: "Secure Room", description: "End-to-end encrypted communications", encrypted: true }
 ];
 
 const MOCK_USERS = [
-  { id: 1, name: "Alex Thompson", avatar: "/placeholder.svg", online: true },
-  { id: 2, name: "Jamie Lee", avatar: "/placeholder.svg", online: true },
-  { id: 3, name: "Sam Rodriguez", avatar: "/placeholder.svg", online: false },
-  { id: 4, name: "Casey Kim", avatar: "/placeholder.svg", online: true },
-  { id: 5, name: "Taylor Wong", avatar: "/placeholder.svg", online: false }
+  { id: 1, name: "Alex Thompson", avatar: "/placeholder.svg", online: true, publicKey: "mock-public-key-1" },
+  { id: 2, name: "Jamie Lee", avatar: "/placeholder.svg", online: true, publicKey: "mock-public-key-2" },
+  { id: 3, name: "Sam Rodriguez", avatar: "/placeholder.svg", online: false, publicKey: "mock-public-key-3" },
+  { id: 4, name: "Casey Kim", avatar: "/placeholder.svg", online: true, publicKey: "mock-public-key-4" },
+  { id: 5, name: "Taylor Wong", avatar: "/placeholder.svg", online: false, publicKey: "mock-public-key-5" }
 ];
 
 interface Message {
@@ -35,6 +48,8 @@ interface Message {
     avatar: string;
   };
   text: string;
+  encrypted: boolean;
+  encryptedText?: string;
   timestamp: Date;
   isCurrentUser: boolean;
 }
@@ -49,13 +64,34 @@ const generateMockMessages = (roomId: number): Message[] => {
     { text: "I've been meaning to check it out. Is it worth seeing in theaters?", user: MOCK_USERS[4] }
   ];
   
-  return baseMessages.map((msg, index) => ({
-    id: index,
-    user: msg.user,
-    text: msg.text,
-    timestamp: new Date(Date.now() - (baseMessages.length - index) * 1000 * 60 * Math.random() * 10),
-    isCurrentUser: msg.user.id === 1 // Assuming user 1 is the current user
-  }));
+  const room = MOCK_ROOMS.find(r => r.id === roomId);
+  const isEncrypted = room?.encrypted || false;
+  
+  return baseMessages.map((msg, index) => {
+    let message: Message = {
+      id: index,
+      user: msg.user,
+      text: msg.text,
+      encrypted: isEncrypted,
+      timestamp: new Date(Date.now() - (baseMessages.length - index) * 1000 * 60 * Math.random() * 10),
+      isCurrentUser: msg.user.id === 1 // Assuming user 1 is the current user
+    };
+    
+    // If room is encrypted, add mock encrypted text
+    if (isEncrypted) {
+      const key = getRoomKey(roomId) || generateAndStoreRoomKey(roomId);
+      message.encryptedText = encryptSymmetric(msg.text, key);
+    }
+    
+    return message;
+  });
+};
+
+// Helper function to generate and store a room key if it doesn't exist
+const generateAndStoreRoomKey = (roomId: number) => {
+  const key = generateSymmetricKey();
+  storeRoomKey(roomId, key);
+  return key;
 };
 
 const Chat = () => {
@@ -64,7 +100,26 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState("");
   const [showUsersList, setShowUsersList] = useState(false);
+  const [createRoomData, setCreateRoomData] = useState({
+    name: "",
+    description: "",
+    encrypted: false
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [currentUserId] = useState(1); // In a real app, this would come from authentication
+  const [userKeys, setUserKeys] = useState<{ publicKey: string; secretKey: string } | null>(null);
+  
+  // Initialize user keys
+  useEffect(() => {
+    let keys = getKeys(currentUserId);
+    
+    if (!keys) {
+      keys = generateKeyPair();
+      storeKeys(currentUserId, keys);
+    }
+    
+    setUserKeys(keys);
+  }, [currentUserId]);
   
   // Load messages when room changes
   useEffect(() => {
@@ -77,14 +132,49 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleRoomSelect = (roomId: number) => {
+    setSelectedRoom(roomId);
+    const room = MOCK_ROOMS.find(r => r.id === roomId);
+    
+    // If room is encrypted and we don't have a key for it, generate one
+    if (room?.encrypted && !getRoomKey(roomId)) {
+      generateAndStoreRoomKey(roomId);
+      toast({
+        title: "Secure Room",
+        description: "You've joined an encrypted room. Messages are protected with end-to-end encryption."
+      });
+    }
+  };
   
   const handleSendMessage = () => {
     if (!messageText.trim()) return;
+    
+    const room = MOCK_ROOMS.find(r => r.id === selectedRoom);
+    const isEncrypted = room?.encrypted || false;
+    
+    let encryptedText: string | undefined = undefined;
+    
+    // Encrypt message if the room is encrypted
+    if (isEncrypted) {
+      const key = getRoomKey(selectedRoom!);
+      if (key) {
+        encryptedText = encryptSymmetric(messageText, key);
+      } else {
+        toast({
+          title: "Encryption Error",
+          description: "Could not encrypt your message. Room key not found."
+        });
+        return;
+      }
+    }
     
     const newMessage: Message = {
       id: messages.length + 1,
       user: MOCK_USERS[0], // Current user
       text: messageText,
+      encrypted: isEncrypted,
+      encryptedText,
       timestamp: new Date(),
       isCurrentUser: true
     };
@@ -93,11 +183,54 @@ const Chat = () => {
     setMessageText("");
   };
   
-  const handleCreateRoom = (roomName: string, roomDescription: string) => {
+  const handleCreateRoom = () => {
+    if (!createRoomData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Room name is required"
+      });
+      return;
+    }
+    
+    const newRoom = {
+      id: MOCK_ROOMS.length + 1,
+      name: createRoomData.name,
+      description: createRoomData.description,
+      encrypted: createRoomData.encrypted
+    };
+    
+    // In a real app, this would be sent to the server
+    // For now, just show a toast and reset the form
+    
+    if (createRoomData.encrypted) {
+      // Generate a symmetric key for this room
+      generateAndStoreRoomKey(newRoom.id);
+    }
+    
     toast({
       title: "Room created",
-      description: `Your new room "${roomName}" has been created.`
+      description: `Your new ${createRoomData.encrypted ? 'encrypted ' : ''}room "${createRoomData.name}" has been created.`
     });
+    
+    setCreateRoomData({ name: "", description: "", encrypted: false });
+  };
+
+  // Function to decrypt a message if needed
+  const getDisplayText = (message: Message) => {
+    if (!message.encrypted) {
+      return message.text;
+    }
+    
+    // If we're showing an encrypted message
+    try {
+      const key = getRoomKey(selectedRoom!);
+      if (key && message.encryptedText) {
+        return decryptSymmetric(message.encryptedText, key);
+      }
+      return "Encrypted message (key not available)";
+    } catch (error) {
+      return "Could not decrypt message";
+    }
   };
   
   return (
@@ -127,15 +260,41 @@ const Chat = () => {
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
                         <label htmlFor="roomName">Room Name</label>
-                        <Input id="roomName" placeholder="Enter room name" />
+                        <Input 
+                          id="roomName" 
+                          placeholder="Enter room name"
+                          value={createRoomData.name}
+                          onChange={(e) => setCreateRoomData({ ...createRoomData, name: e.target.value })}
+                        />
                       </div>
                       <div className="grid gap-2">
                         <label htmlFor="roomDescription">Description</label>
-                        <Textarea id="roomDescription" placeholder="Describe this room's purpose" />
+                        <Textarea 
+                          id="roomDescription" 
+                          placeholder="Describe this room's purpose"
+                          value={createRoomData.description}
+                          onChange={(e) => setCreateRoomData({ ...createRoomData, description: e.target.value })}
+                        />
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id="encrypted"
+                          checked={createRoomData.encrypted}
+                          onCheckedChange={(checked) => setCreateRoomData({ ...createRoomData, encrypted: checked })}
+                        />
+                        <label htmlFor="encrypted" className="flex items-center cursor-pointer">
+                          <Shield className="h-4 w-4 mr-1 text-primary" /> 
+                          End-to-end encryption
+                        </label>
+                      </div>
+                      {createRoomData.encrypted && (
+                        <div className="bg-secondary/10 p-3 rounded-md text-xs">
+                          End-to-end encryption ensures that only members of this room can read messages.
+                        </div>
+                      )}
                     </div>
                     <DialogFooter>
-                      <Button onClick={() => handleCreateRoom("New Room", "Description")}>Create Room</Button>
+                      <Button onClick={handleCreateRoom}>Create Room</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -151,10 +310,13 @@ const Chat = () => {
                     key={room.id}
                     variant={selectedRoom === room.id ? "default" : "ghost"}
                     className="justify-start h-auto py-3 px-4"
-                    onClick={() => setSelectedRoom(room.id)}
+                    onClick={() => handleRoomSelect(room.id)}
                   >
-                    <div className="text-left">
-                      <div className="font-medium">{room.name}</div>
+                    <div className="text-left w-full">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">{room.name}</div>
+                        {room.encrypted && <Lock className="h-3 w-3 text-primary" />}
+                      </div>
                       <div className="text-xs text-muted-foreground">{room.description}</div>
                     </div>
                   </Button>
@@ -171,21 +333,31 @@ const Chat = () => {
               <>
                 <CardHeader className="pb-4 flex-shrink-0">
                   <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>
-                        {MOCK_ROOMS.find(r => r.id === selectedRoom)?.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {MOCK_ROOMS.find(r => r.id === selectedRoom)?.description}
-                      </CardDescription>
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <CardTitle>
+                          {MOCK_ROOMS.find(r => r.id === selectedRoom)?.name}
+                        </CardTitle>
+                        <CardDescription>
+                          {MOCK_ROOMS.find(r => r.id === selectedRoom)?.description}
+                        </CardDescription>
+                      </div>
+                      {MOCK_ROOMS.find(r => r.id === selectedRoom)?.encrypted && (
+                        <Badge variant="outline" className="ml-2 flex items-center gap-1">
+                          <Lock className="h-3 w-3" />
+                          <span>Encrypted</span>
+                        </Badge>
+                      )}
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => setShowUsersList(!showUsersList)}
-                    >
-                      <Users className="h-5 w-5" />
-                    </Button>
+                    <ToggleGroup type="single" value={showUsersList ? "users" : "chat"}>
+                      <ToggleGroupItem value="chat" onClick={() => setShowUsersList(false)}>
+                        Chat
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="users" onClick={() => setShowUsersList(true)}>
+                        <Users className="h-4 w-4 mr-1" />
+                        Users
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
                 </CardHeader>
                 
@@ -209,10 +381,15 @@ const Chat = () => {
                           }`}
                           >
                             <div className="flex flex-col">
-                              <span className={`text-xs ${message.isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                                {message.user.name} • {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              <p>{message.text}</p>
+                              <div className="flex items-center gap-1">
+                                <span className={`text-xs ${message.isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                  {message.user.name} • {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {message.encrypted && (
+                                  <Lock className={`h-3 w-3 ${message.isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"}`} />
+                                )}
+                              </div>
+                              <p>{getDisplayText(message)}</p>
                             </div>
                           </div>
                         </div>
@@ -237,7 +414,12 @@ const Chat = () => {
                                 user.online ? "bg-green-500" : "bg-gray-300"
                               }`} />
                             </div>
-                            <div className="text-sm">{user.name}</div>
+                            <div className="text-sm flex items-center gap-1">
+                              {user.name}
+                              {MOCK_ROOMS.find(r => r.id === selectedRoom)?.encrypted && (
+                                <Lock className="h-3 w-3 text-muted-foreground" title="Has encryption keys" />
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -250,16 +432,18 @@ const Chat = () => {
                     <Input
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
-                      placeholder="Type your message..."
+                      placeholder={`Type your ${MOCK_ROOMS.find(r => r.id === selectedRoom)?.encrypted ? 'encrypted ' : ''}message...`}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
                           handleSendMessage();
                         }
                       }}
+                      className="flex-1"
                     />
                     <Button onClick={handleSendMessage}>
-                      <Send className="h-4 w-4" />
+                      <Send className="h-4 w-4 mr-1" />
+                      Send
                     </Button>
                   </div>
                 </CardFooter>
