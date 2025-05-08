@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -417,7 +416,9 @@ const Chat = () => {
                             <div className="text-sm flex items-center gap-1">
                               {user.name}
                               {MOCK_ROOMS.find(r => r.id === selectedRoom)?.encrypted && (
-                                <Lock className="h-3 w-3 text-muted-foreground" title="Has encryption keys" />
+                                <div className="flex items-center">
+                                  <Lock className="h-3 w-3 text-muted-foreground" aria-label="Has encryption keys" />
+                                </div>
                               )}
                             </div>
                           </div>
