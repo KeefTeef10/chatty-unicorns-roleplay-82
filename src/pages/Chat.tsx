@@ -8,16 +8,17 @@ import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatMessageArea } from "@/components/chat/ChatMessageArea";
 import { CreateRoomDialog } from "@/components/chat/CreateRoomDialog";
 import { EmptyChatState } from "@/components/chat/EmptyChatState";
-import { 
-  generateKeyPair, 
-  generateSymmetricKey, 
-  encryptSymmetric, 
-  decryptSymmetric, 
-  storeKeys, 
+import {
+  generateKeyPair,
+  generateSymmetricKey,
+  encryptSymmetric,
+  decryptSymmetric,
+  storeKeys,
   getKeys,
   storeRoomKey,
   getRoomKey
 } from "@/utils/encryption";
+import { generateHuggingFaceResponse } from "@/utils/huggingface";
 
 // Mock data - in a real app this would come from an API
 const MOCK_ROOMS = [
@@ -171,26 +172,27 @@ const Chat = () => {
   
   const handleSendMessage = () => {
     if (!messageText.trim()) return;
-    
+
+    const userInput = messageText;
     const room = MOCK_ROOMS.find(r => r.id === selectedRoom);
     const isEncrypted = room?.encrypted || false;
-    
+
     let encryptedText: string | undefined = undefined;
-    
+
     // Encrypt message if the room is encrypted
     if (isEncrypted) {
       const key = getRoomKey(selectedRoom!);
       if (key) {
-        encryptedText = encryptSymmetric(messageText, key);
+        encryptedText = encryptSymmetric(userInput, key);
       } else {
         toast({
           title: "Encryption Error",
-          description: "Could not encrypt your message. Room key not found."
+          description: "Could not encrypt your message. Room key not found.",
         });
         return;
       }
     }
-    
+
     const newMessage: Message = {
       id: messages.length + 1,
       user: {
@@ -198,15 +200,35 @@ const Chat = () => {
         name: userProfile?.username || "Me",
         avatar: "/placeholder.svg"
       },
-      text: messageText,
+      text: userInput,
       encrypted: isEncrypted,
       encryptedText,
       timestamp: new Date(),
       isCurrentUser: true
     };
-    
-    setMessages([...messages, newMessage]);
+
+    setMessages(prev => [...prev, newMessage]);
     setMessageText("");
+
+    (async () => {
+      try {
+        const reply = await generateHuggingFaceResponse(userInput);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: prev.length + 1,
+            user: { id: 0, name: "CyberBot", avatar: "/placeholder.svg" },
+            text: reply,
+            encrypted: false,
+            timestamp: new Date(),
+            isCurrentUser: false
+          }
+        ]);
+      } catch (error) {
+        console.error("Failed to get response from Hugging Face:", error);
+      }
+    })();
+
     
     // Play send sound - AOL style
     const audio = new Audio("data:audio/wav;base64,UklGRnQGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU8GAACA/4D/gP+A/4X/if+Q/5j/oP+o/67/s/+3/7z/vv/B/8T/x//J/8z/0f/V/9r/4f/p//L/+v8DAAoAFQAcACYALwA6AEMASwBVAF0AZQBqAG8AcwB2AHgAfAB9AH8AgACFAIcAiwCMAI8AkACTAJYAmACbAJ8AoQCjAKUApwCpAKsArACvALEAswC0ALUAtQC2ALcAuQC6ALwAvQC9AL0AvQC7ALsAugC5ALgAuAC3ALEArQCrAKcAogCeAJwAmACTAI8AiwCGAIIAfgB6AHQAcABsAGcAYQBcAFYATwBKAEMAPQA2AC8AKQAhABoAEwALAAUAAAAA+v/y/+z/5f/f/9j/0v/L/8X/vv+4/7H/q/+l/6D/m/+W/5D/jP+I/4P/f/97/3j/df9y/3D/b/9t/2v/a/9q/2r/af9p/2n/af9p/2n/af9p/2r/a/9r/2v/av9s/23/b/9v/3H/cf9y/3P/c/90/3X/df92/3b/d/94/3j/d/94/3j/ef95/3j/eP94/3j/d/93/3b/df91/3T/c/90/3L/cf9x/3H/cP9v/2//b/9u/27/bv9u/27/bv9t/23/bv9u/23/bv9v/27/b/9v/2//cP9w/3H/cv9z/3P/dP91/3f/eP95/3v/fP9+/4D/gf+E/4b/iP+K/43/j/+S/5X/mP+b/57/of+l/6j/q/+v/7L/tf+5/73/wf/E/8n/zP/Q/9T/2P/b/+D/4//n/+v/7v/y//X/+P/7////AgAFAAgACwAOABEAFAAWABgAGwAcAB8AIAAhACMAJAAkACUAJgAlACUAJAAkACMAIgAhAB8AHQAbABgAFwATABAADAAIAAUAAgD+//v/9//z//D/7P/p/+X/4v/e/9v/2P/U/9H/zv/L/8j/xf/C/7//vP+6/7f/tf+z/7H/r/+v/6z/rP+q/6n/qf+p/6j/qP+o/6j/qP+p/6n/qf+q/6v/rP+t/67/sP+x/7L/tP+2/7f/uf+7/73/vv/A/8L/xP/G/8f/yP/J/8r/yv/L/8z/zP/M/8z/zf/N/83/zf/N/83/zv/N/83/zf/N/83/zf/N/8z/zP/M/8z/zf/N/83/zf/N/83/zf/N/83/zv/O/87/z//P/8//z//P/8//0P/Q/9D/0P/Q/9D/0P/Q/9D/0P/Q/9D/0P/Q/9D/0f/Q/9D/0P/Q/9D/0P/Q/9D/0P/Q/9D/0P/P/8//z//O/87/zf/N/8z/y//L/8r/yf/I/8j/x//G/8X/xP/D/8P/wv/A/8D/v/++/7z/vP+7/7r/uf+4/7j/t/+2/7X/tP+z/7L/sv+x/7D/r/+u/67/rf+s/6v/q/+q/6n/qf+o/6j/p/+m/6b/pf+l/6T/o/+j/6L/of+h/6D/n/+f/57/nv+d/53/nP+c/5v/m/+a/5r/mv+Z/5n/mP+Y/5j/l/+X/5f/l/+W/5b/lv+W/5b/lv+W/5b/lv+W/5b/lv+W/5b/l/+X/5j/mP+Y/5n/mv+a/5v/nP+d/53/nv+f/6D/of+i/6P/pP+l/6b/p/+o/6n/qv+r/6v/rP+t/67/r/+w/7H/sf+y/7L/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/s/+z/7P/");
