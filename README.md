@@ -64,6 +64,29 @@ This project is built with .
 
 Simply open [Lovable](https://lovable.dev/projects/55cc6310-e641-46d4-adf0-29ecfa5f0955) and click on Share -> Publish.
 
+## Running with Docker
+
+To build and preview the production bundle inside a container:
+
+```sh
+# Build the image
+docker build -t lovable-app .
+
+# Run the container locally
+docker run --rm -p 8080:80 lovable-app
+```
+
+The app will be available at <http://localhost:8080>.
+
+## BMad Method installation
+
+This project has been initialized with the [BMad Method](https://www.npmjs.com/package/bmad-method).
+If you need to reinstall or update it, run:
+
+```sh
+npx bmad-method install
+```
+
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
