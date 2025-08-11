@@ -90,3 +90,17 @@ npx bmad-method install
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
+## Stable Diffusion XL Gradio demo
+
+This repository now includes a simple [Gradio](https://gradio.app) interface built with the Stable Diffusion XL model from Hugging Face.
+
+### Running the demo
+
+```sh
+pip install -r requirements.txt
+export HF_TOKEN=<your_huggingface_token>
+python sdxl_gradio_app.py
+```
+
+Open the printed URL in your browser and enter a prompt to generate an image.
