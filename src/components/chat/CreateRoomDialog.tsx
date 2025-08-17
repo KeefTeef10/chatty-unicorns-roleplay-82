@@ -14,13 +14,15 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 
+interface CreateRoomData {
+  name: string;
+  description: string;
+  encrypted: boolean;
+}
+
 interface CreateRoomDialogProps {
-  createRoomData: {
-    name: string;
-    description: string;
-    encrypted: boolean;
-  };
-  onCreateRoomDataChange: (data: any) => void;
+  createRoomData: CreateRoomData;
+  onCreateRoomDataChange: (data: CreateRoomData) => void;
   onCreateRoom: () => void;
   children: React.ReactNode;
 }

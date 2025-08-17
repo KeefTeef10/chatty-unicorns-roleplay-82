@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { UserProfile } from "@/types/chat";
 
 interface UserProfileCardProps {
-  userProfile: any;
+  userProfile: UserProfile | null;
   userStatus: string;
   awayMessage: string;
   onAwayMessageChange: (message: string) => void;
