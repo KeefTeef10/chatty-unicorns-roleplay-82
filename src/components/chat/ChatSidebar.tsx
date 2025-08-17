@@ -3,6 +3,7 @@ import { Settings, BellOff, User } from "lucide-react";
 import { UserProfileCard } from "./UserProfileCard";
 import { ChatRoomList } from "./ChatRoomList";
 import { BuddyList } from "./BuddyList";
+import { UserProfile } from "@/types/chat";
 
 interface Room {
   id: number;
@@ -20,7 +21,7 @@ interface Buddy {
 }
 
 interface ChatSidebarProps {
-  userProfile: any;
+  userProfile: UserProfile | null;
   userStatus: string;
   awayMessage: string;
   rooms: Room[];

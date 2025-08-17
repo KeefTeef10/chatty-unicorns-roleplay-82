@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Chat from "./pages/Chat";
 import ChatSetup from "./pages/ChatSetup";
 import Communities from "./pages/Communities";
+import Debate from "./pages/Debate";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/chat" element={<Chat />} />
           <Route path="/chat-setup" element={<ChatSetup />} />
           <Route path="/communities" element={<Communities />} />
+          <Route path="/debate" element={<Debate />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

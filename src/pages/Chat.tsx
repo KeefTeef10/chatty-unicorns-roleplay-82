@@ -8,6 +8,7 @@ import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatMessageArea } from "@/components/chat/ChatMessageArea";
 import { CreateRoomDialog } from "@/components/chat/CreateRoomDialog";
 import { EmptyChatState } from "@/components/chat/EmptyChatState";
+import { UserProfile } from "@/types/chat";
 import { 
   generateKeyPair, 
   generateSymmetricKey, 
@@ -71,7 +72,7 @@ const generateMockMessages = (roomId: number): Message[] => {
   const isEncrypted = room?.encrypted || false;
   
   return baseMessages.map((msg, index) => {
-    let message: Message = {
+    const message: Message = {
       id: index,
       user: msg.user,
       text: msg.text,
@@ -108,7 +109,7 @@ const Chat = () => {
     description: "",
     encrypted: false
   });
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userStatus, setUserStatus] = useState("online");
   const [awayMessage, setAwayMessage] = useState("I'm away from my computer right now.");
   const [currentUserId] = useState(1); // In a real app, this would come from authentication
